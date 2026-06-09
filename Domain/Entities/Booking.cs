@@ -7,7 +7,7 @@ namespace Domain.Entities
 {
     public class Booking
     {
-        public static Booking Create(Guid roomId, DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid guestId, Guid roomTypeId)
+        public static Booking Create(DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid guestId, Guid roomTypeId)
         {
             return new Booking
             {
@@ -19,16 +19,27 @@ namespace Domain.Entities
                 CreatedAt = DateTime.Now,
                 GuestId = guestId,
                 RoomTypeId = roomTypeId,
-                AssignedRoomId = roomId,
             };
         }
-        public void Update(Guid roomId, DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid roomTypeId)
+
+        public void CheckIn(Guid assignedRoomId)
+        {
+            AssignedRoomId = assignedRoomId;
+            Status = BookingStatus.CheckedIn;
+        }
+
+        public void CheckOut()
+        {
+            Status = BookingStatus.CheckedOut;
+        }
+
+        public void Update(DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid roomTypeId)
         {
             CheckInDate = chekInDate;
             CheckOutDate = chekOutDate;
             TotalPrice = totalPrice;
             RoomTypeId = roomTypeId;
-            AssignedRoomId = roomId;
+            AssignedRoomId = null;
         }
         public Guid Id { get; set; }
         public DateTime CheckInDate { get; set; }

@@ -1,6 +1,7 @@
 ﻿using Application.Bookings.Commands;
 using Application.Common.Interfaces;
 using Application.ErrorHandling;
+using Domain.Entities.Enums;
 using Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,9 @@ namespace Application.Bookings.CommandHandlers
             if (booking == null)
                 return Result<bool>.Failure(Errors.BookingNotFound);
 
+            if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+                return Result<bool>.Failure(Errors.InvalidBookingStatus);
+
             if (booking.GuestId != request.GuestId)
                 return Result<bool>.Failure(Errors.UnauthorizedBookingAccess);
 
@@ -37,9 +41,9 @@ namespace Application.Bookings.CommandHandlers
             if (await _repository.IsBookingCheckInDateLaterThanCheckOut(request.CheckInDate.Date, request.CheckOutDate.Date))
                 return Result<bool>.Failure(Errors.BookingCheckInDateLaterThanCheckOut);
 
-            bool isOccupied = await _repository.IsRoomAvailableAsync(request.RoomId, request.CheckInDate.Date, request.CheckOutDate.Date, request.BookingId, cancellationToken);
+            bool isAvailable = await _repository.IsRoomAvailableAsync(request.RoomId, request.CheckInDate.Date, request.CheckOutDate.Date, request.BookingId, cancellationToken);
 
-            if (isOccupied)
+            if (!isAvailable)
                 return Result<bool>.Failure(Errors.RoomIsBooked);
 
             var room = await _context.Rooms
@@ -51,13 +55,8 @@ namespace Application.Bookings.CommandHandlers
 
             decimal totalPrice = room.CalculateTotalPrice(request.CheckInDate, request.CheckOutDate);
 
-            // 7. Оновлюємо сутність (припускаю, що у тебе є або буде метод Update у класі Booking)
-            booking.Update(request.RoomId, request.CheckInDate, request.CheckOutDate, totalPrice, room.RoomTypeId);
+            booking.Update(request.CheckInDate, request.CheckOutDate, totalPrice, room.RoomTypeId);
 
-            // 8. Магія конкурентності (щоб ніхто не забронював цей номер у цю ж мілісекунду)
-            _context.Entry(room).State = EntityState.Modified;
-
-            // Ніяких try-catch! Зберігаємо зміни.
             await _context.SaveChangesAsync(cancellationToken);
 
             return Result<bool>.Success(true);

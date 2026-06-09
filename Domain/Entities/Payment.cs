@@ -6,6 +6,18 @@ namespace Domain.Entities
 {
     public class Payment
     {
+        public static Payment Create(Guid invoiceId, decimal amount, string paymentMethod)
+        {
+            return new Payment
+            {
+                Id = Guid.NewGuid(),
+                InvoiceId = invoiceId,
+                Amount = amount,
+                PaymentMethod = paymentMethod,
+                PaymentDate = DateTime.UtcNow
+            };
+        }
+
         public Guid Id { get; set; }
         public decimal Amount { get; set; }
         public string PaymentMethod { get; set; }

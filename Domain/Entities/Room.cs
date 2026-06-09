@@ -27,6 +27,16 @@ namespace Domain.Entities
             RoomTypeId = roomTypeId;
         }
 
+        public void MarkOccupied()
+        {
+            Status = RoomStatus.Occupied;
+        }
+
+        public void MarkNeedsCleaning()
+        {
+            Status = RoomStatus.NeedsCleaning;
+        }
+
         public Guid Id { get; set; }
         public string RoomNumber { get; set; }
         public int Floor { get; set; }

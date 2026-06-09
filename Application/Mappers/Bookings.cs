@@ -7,15 +7,13 @@ using System.Text;
 
 namespace Application.Mappers
 {
-    public class Bookings : Profile
+    public class BookingMapperProfile : Profile
     {
-        public Bookings()
+        public BookingMapperProfile()
         {
             CreateMap<Booking, GetBookingDTO>()
                 .ForMember(dest => dest.RoomTypeName,
-                           opt => opt.MapFrom(src => src.AssignedRoom.RoomType.Name))
-                .ForMember(dest => dest.Status,
-                           opt => opt.MapFrom(src => src.Status.ToString()));
+                           opt => opt.MapFrom(src => src.RoomType.Name));
         }
     }
 }

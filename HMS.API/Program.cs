@@ -4,6 +4,7 @@ using Infrastructure.ExceptionHandling;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using System.Security.Claims;
 using System.Text;
 
 namespace HMS.API
@@ -44,7 +45,9 @@ namespace HMS.API
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+                    IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+                    RoleClaimType = ClaimTypes.Role,
+                    NameClaimType = "Name"
                 };
             });
 

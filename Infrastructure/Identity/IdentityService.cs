@@ -87,7 +87,10 @@ namespace Infrastructure.Identity
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                UserId = user.Id
+                UserId = user.Id,
+                Name = fullName,
+                Email = user.Email ?? string.Empty,
+                Roles = roles
             });
         }
 

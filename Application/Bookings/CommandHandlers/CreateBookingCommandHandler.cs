@@ -31,6 +31,14 @@ namespace Application.Bookings.CommandHandlers
             if (!isAvailable)
                 return Result<Guid> .Failure(Errors.RoomIsBooked);
 
+            var guestExists = await _context.UserProfiles
+                .AnyAsync(u => u.Id == request.GuestId, cancellationToken);
+
+            if (!guestExists)
+            {
+                // Повертаємо чисту бізнес-помилку (Result Pattern), замість падіння бази
+                return Result<Guid>.Failure(Errors.UserNotFound);
+            }
             var room = await _context.Rooms
                 .Include(r => r.RoomType)
                 .FirstOrDefaultAsync(r => r.Id == request.RoomId, cancellationToken);
@@ -39,10 +47,9 @@ namespace Application.Bookings.CommandHandlers
                 return Result<Guid>.Failure(Errors.RoomNotFound);
 
             decimal totalPrice = room.CalculateTotalPrice(request.CheckInDate, request.CheckOutDate);
-            var booking = Booking.Create(room.Id, request.CheckInDate, request.CheckOutDate, totalPrice, request.GuestId, room.RoomTypeId);
+            var booking = Booking.Create(request.CheckInDate, request.CheckOutDate, totalPrice, request.GuestId, room.RoomTypeId);
 
             await _context.Bookings.AddAsync(booking, cancellationToken);
-            _context.Entry(room).State = EntityState.Modified;
             await _context.SaveChangesAsync(cancellationToken);
 
             return Result<Guid>.Success(booking.Id);

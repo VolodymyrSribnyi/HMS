@@ -25,7 +25,10 @@ namespace Application.Bookings.QueryHandlers
 
         public async Task<Result<IEnumerable<GetBookingDTO>>> Handle(GetAllBookingsQuery request, CancellationToken cancellationToken)
         {
-            var bookings = await _context.Bookings.AsNoTracking().ToListAsync(cancellationToken);
+            var bookings = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.RoomType)
+                .ToListAsync(cancellationToken);
 
             if (bookings == null)
             {

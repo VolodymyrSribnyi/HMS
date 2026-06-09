@@ -1,6 +1,7 @@
 ﻿using Application.Common.Interfaces;
 using Application.ErrorHandling;
 using Azure.Core;
+using Domain.Entities.Enums;
 using Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,8 @@ namespace Infrastructure.Repositories
         {
             var query = _context.Bookings
                 .Where(b => b.AssignedRoomId == roomId &&
+                        b.Status != BookingStatus.Cancelled &&
+                        b.Status != BookingStatus.CheckedOut &&
                         b.CheckInDate < checkOutDate &&
                         b.CheckOutDate > checkInDate);
 

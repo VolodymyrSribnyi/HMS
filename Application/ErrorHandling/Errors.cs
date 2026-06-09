@@ -19,6 +19,12 @@ namespace Application.ErrorHandling
         public static readonly Error BookingNotFound = new Error("BOOKING_NOT_FOUND", "The specified booking was not found.");
         public static readonly Error BookingCreationFailed = new Error("BOOKING_CREATION_FAILED", "Failed to create the booking.");
         public static readonly Error BookingExists = new Error("BOOKING_EXISTS", "The reservation already exists.");
+        public static readonly Error InvalidBookingStatus = new Error("INVALID_BOOKING_STATUS", "The booking status does not allow this operation.");
+        public static readonly Error InvoiceNotFound = new Error("INVOICE_NOT_FOUND", "The specified invoice was not found.");
+        public static readonly Error InvoiceAlreadyClosed = new Error("INVOICE_ALREADY_CLOSED", "The invoice is already closed.");
+        public static readonly Error InvalidDiscount = new Error("INVALID_DISCOUNT", "The discount is invalid.");
+        public static readonly Error InvalidPaymentAmount = new Error("INVALID_PAYMENT_AMOUNT", "The payment amount is invalid.");
+        public static readonly Error PaymentExceedsInvoiceBalance = new Error("PAYMENT_EXCEEDS_INVOICE_BALANCE", "The payment amount exceeds the invoice balance.");
         public static readonly Error UserNotFound = new Error("USER_NOT_FOUND", "The specified user was not found.");
         public static readonly Error UserExists = new Error("USER_EXISTS", "The user already exists.");
         public static readonly Error UsersNotFoundForRole = new Error("USERS_NOT_FOUND_FOR_ROLE", "No users found for the specified role.");
@@ -32,6 +38,8 @@ namespace Application.ErrorHandling
         public static readonly Error RoomExists = new Error("ROOM_EXISTS", "The specified room number already exists.");
         public static readonly Error RoomHasBookings = new Error("ROOM_HAS_BOOKINGS", "The specified room has bookings and cannot be deleted.");
         public static readonly Error InvalidRoomStatus = new Error("INVALID_ROOM_STATUS", "The specified room status is invalid.");
+        public static readonly Error RoomNotAvailable = new Error("ROOM_NOT_AVAILABLE", "The specified room is not available.");
+        public static readonly Error RoomTypeMismatch = new Error("ROOM_TYPE_MISMATCH", "The specified room does not match the booking room type.");
         public static readonly Error ConcurrencyConflict = new Error("CONCURRENCY_CONFLICT", "The record was modified by another user. Please reload and try again.");
         public static readonly Error BookingDateInPast = new Error("BOOKING_DATE_IN_PAST", "It is not possible to book a room for a date in the past.");
         public static readonly Error BookingCheckInDateLaterThanCheckOut = new Error("CHECKIN_DATE_LATER_THAN_CHECKOUT", "The CheckOut date must be later than the CheckIn date.");

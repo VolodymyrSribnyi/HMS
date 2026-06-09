@@ -29,7 +29,11 @@ namespace Application
                 services.AddTransient(validatorType.ValidatorInterface!, validatorType.Implementation);
             }
 
-            services.AddAutoMapper(cfg => cfg.AddProfile<RoomTypeMapperProfile>());
+            services.AddAutoMapper(cfg =>
+            {
+                cfg.AddProfile<RoomTypeMapperProfile>();
+                cfg.AddProfile<BookingMapperProfile>();
+            });
             return services;
         }
     }
