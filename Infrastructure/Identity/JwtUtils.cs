@@ -83,14 +83,11 @@ namespace Infrastructure.Identity
         }
         public string GenerateRefreshToken()
         {
-            // Створюємо масив з 32 байтів
             var randomNumber = new byte[32];
 
-            // Заповнюємо його криптографічно безпечними випадковими числами
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
 
-            // Перетворюємо в Base64 рядок, щоб зручно зберігати в БД і передавати в куках
             return Convert.ToBase64String(randomNumber);
         }
     }

@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Infrastructure.ExceptionHandling;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -80,6 +81,7 @@ namespace HMS.API
             // Configure the HTTP request pipeline.
 
             app.UseHttpsRedirection();
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.UseCors("FrontendUI");
             app.UseAuthentication();
             app.UseAuthorization();

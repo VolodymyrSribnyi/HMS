@@ -8,6 +8,7 @@ namespace Application.ErrorHandling
     {
         public static readonly Error NullData = new("NULL_DATA", "The provided data is null.");
         public static readonly Error InvalidData = new("INVALID_DATA", "The provided data is invalid.");
+        public static Error ValidationFailed(string description) => new("VALIDATION_FAILED", description);
         
         public static readonly Error PictureTooLarge = new Error("PICTURE_TOO_LARGE", "Picture size exceed");
         public static readonly Error InvalidRating = new Error("INVALID_RATING", "Provided rating invalid,must be between 1-5");

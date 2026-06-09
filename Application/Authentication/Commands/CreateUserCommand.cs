@@ -1,11 +1,9 @@
-﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Application.ErrorHandling;
+using MediatR;
 
 namespace Application.Authentication.Commands
 {
-    public record CreateUserCommand : IRequest<string>
+    public record CreateUserCommand : IRequest<Result<string>>
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }

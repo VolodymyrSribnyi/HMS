@@ -1,5 +1,5 @@
-﻿using Application.Authentication.Commands;
-using Application.DTOs.User;
+using Application.Authentication.Commands;
+using Application.ErrorHandling;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,16 +10,25 @@ namespace HMS.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IMediator _mediator;
+
         public AuthController(IMediator mediator)
         {
             _mediator = mediator;
         }
+
         [HttpPost("Register")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserCommand command)
         {
-            var userId = await _mediator.Send(command);
-            return Ok(new {UserId = userId, Message = "User is successfully created"});
+            var result = await _mediator.Send(command);
+
+            if (result.IsFailure)
+            {
+                return ToActionResult(result);
+            }
+
+            return Ok(new { UserId = result.Value, Message = "User is successfully created" });
         }
+
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] AuthUserCommand command)
         {
@@ -79,6 +88,16 @@ namespace HMS.API.Controllers
                 Expires = DateTimeOffset.UtcNow.AddDays(7),
                 Path = "/api/auth/refresh"
             });
+        }
+
+        private IActionResult ToActionResult(Result result)
+        {
+            if (result.Error == Errors.UserExists)
+            {
+                return Conflict(new { Error = result.Error.Description });
+            }
+
+            return BadRequest(new { Error = result.Error.Description });
         }
     }
 }
