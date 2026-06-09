@@ -1,11 +1,9 @@
-﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Application.ErrorHandling;
+using MediatR;
 
 namespace Application.RoomTypes.Commands
 {
-    public record DeleteRoomTypeCommand : IRequest<bool>
+    public record DeleteRoomTypeCommand : IRequest<Result>
     {
         public Guid Id { get; set; }
     }

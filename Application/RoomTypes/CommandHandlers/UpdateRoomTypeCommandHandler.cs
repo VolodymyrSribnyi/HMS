@@ -1,36 +1,47 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
+using Application.ErrorHandling;
 using Application.RoomTypes.Commands;
-using AutoMapper;
-using Domain.Entities;
-using Domain.Interfaces;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.RoomTypes.CommandHandlers
 {
-    public class UpdateRoomTypeCommandHandler : IRequestHandler<UpdateRoomTypeCommand, bool>
+    public class UpdateRoomTypeCommandHandler : IRequestHandler<UpdateRoomTypeCommand, Result>
     {
         private readonly IHmsDbContext _context;
+
         public UpdateRoomTypeCommandHandler(IHmsDbContext context)
         {
             _context = context;
         }
 
-        public async Task<bool> Handle(UpdateRoomTypeCommand request, CancellationToken cancellationToken)
+        public async Task<Result> Handle(UpdateRoomTypeCommand request, CancellationToken cancellationToken)
         {
             var roomType = await _context.RoomTypes.FindAsync(new object[] { request.Id }, cancellationToken);
 
             if (roomType == null)
-                return false;
+            {
+                return Result.Failure(Errors.RoomTypeNotFound);
+            }
+
+            var nameExists = await _context.RoomTypes
+                .AnyAsync(rt => rt.Id != request.Id && rt.Name == request.Name, cancellationToken);
+
+            if (nameExists)
+            {
+                return Result.Failure(Errors.RoomTypeExists);
+            }
 
             roomType.Update(
-                request.Name, request.Capacity, request.BasePrice,
-                request.Description, request.Amenities);
+                request.Name,
+                request.Capacity,
+                request.BasePrice,
+                request.Description,
+                request.Amenities);
 
             await _context.SaveChangesAsync(cancellationToken);
-            return true;
+
+            return Result.Success();
         }
     }
 }

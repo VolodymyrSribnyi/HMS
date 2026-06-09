@@ -1,10 +1,7 @@
-﻿using FluentValidation;
-using RoomTypes.Commands;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Application.RoomTypes.Commands;
+using FluentValidation;
 
-namespace RoomTypes.Validations
+namespace Application.RoomTypes.Validations
 {
     public class CreateRoomTypeCommandValidator : AbstractValidator<CreateRoomTypeCommand>
     {

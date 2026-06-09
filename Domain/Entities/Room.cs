@@ -7,6 +7,26 @@ namespace Domain.Entities
 {
     public class Room
     {
+        public static Room Create(string roomNumber, int floor, RoomStatus status, Guid roomTypeId)
+        {
+            return new Room
+            {
+                Id = Guid.NewGuid(),
+                RoomNumber = roomNumber,
+                Floor = floor,
+                Status = status,
+                RoomTypeId = roomTypeId
+            };
+        }
+
+        public void Update(string roomNumber, int floor, RoomStatus status, Guid roomTypeId)
+        {
+            RoomNumber = roomNumber;
+            Floor = floor;
+            Status = status;
+            RoomTypeId = roomTypeId;
+        }
+
         public Guid Id { get; set; }
         public string RoomNumber { get; set; }
         public int Floor { get; set; }

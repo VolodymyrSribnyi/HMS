@@ -26,7 +26,12 @@ namespace Application.ErrorHandling
         public static readonly Error NotificationDeletionFailed = new Error("NOTIFICATION_DELETION_FAILED", "Failed to delete the notification request.");
         public static readonly Error RoomTypeNotFound = new Error("ROOM_TYPE_NOT_FOUND", "The specified room type was not found.");
         public static readonly Error RoomTypeExists = new Error("ROOM_TYPE_EXISTS", "The specified room type already exists.");
-        public static readonly Error RoomNotFound = new Error("ROOM_NOT_FOUND", "The specified room  was not found.");
+        public static readonly Error RoomTypeInUse = new Error("ROOM_TYPE_IN_USE", "The specified room type is assigned to existing rooms.");
+        public static readonly Error RoomNotFound = new Error("ROOM_NOT_FOUND", "The specified room was not found.");
+        public static readonly Error RoomExists = new Error("ROOM_EXISTS", "The specified room number already exists.");
+        public static readonly Error RoomHasBookings = new Error("ROOM_HAS_BOOKINGS", "The specified room has bookings and cannot be deleted.");
+        public static readonly Error InvalidRoomStatus = new Error("INVALID_ROOM_STATUS", "The specified room status is invalid.");
+        public static readonly Error ConcurrencyConflict = new Error("CONCURRENCY_CONFLICT", "The record was modified by another user. Please reload and try again.");
         public static readonly Error BookingDateInPast = new Error("BOOKING_DATE_IN_PAST", "It is not possible to book a room for a date in the past.");
         public static readonly Error BookingCheckInDateLaterThanCheckOut = new Error("CHECKIN_DATE_LATER_THAN_CHECKOUT", "The CheckOut date must be later than the CheckIn date.");
         public static readonly Error BookingRaceCondition = new Error("BOOKING_RACE_CONDITION", "Unfortunately, someone else has just booked this room for your dates. Please try again");

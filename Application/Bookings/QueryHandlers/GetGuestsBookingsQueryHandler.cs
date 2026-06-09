@@ -23,10 +23,12 @@ namespace Application.Bookings.QueryHandlers
             var bookings = await _context.Bookings
             .Where(b => b.GuestId == request.GuestId)
             .OrderByDescending(b => b.CheckInDate)
-            .ProjectTo<GetBookingDTO>(_mapper.ConfigurationProvider)
+            //.ProjectTo<GetBookingDTO>(_mapper.ConfigurationProvider)
             .ToListAsync(cancellationToken);
 
-            return Result<IEnumerable<GetBookingDTO>>.Success(bookings);
+            var bookingsDto = _mapper.Map<List<GetBookingDTO>>(bookings);
+
+            return Result<IEnumerable<GetBookingDTO>>.Success(bookingsDto);
         }
     }
 }

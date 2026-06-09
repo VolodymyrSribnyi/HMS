@@ -1,11 +1,9 @@
-﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Application.ErrorHandling;
+using MediatR;
 
 namespace Application.RoomTypes.Commands
 {
-    public record UpdateRoomTypeCommand : IRequest<bool>
+    public record UpdateRoomTypeCommand : IRequest<Result>
     {
         public Guid Id { get; set; }
         public string Name { get; set; }

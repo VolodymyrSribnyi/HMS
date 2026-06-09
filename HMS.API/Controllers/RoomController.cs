@@ -1,6 +1,6 @@
 using Application.ErrorHandling;
-using Application.RoomTypes.Commands;
-using Application.RoomTypes.Queries;
+using Application.Rooms.Commands;
+using Application.Rooms.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,11 +10,11 @@ namespace HMS.API.Controllers
     [Route("api/[controller]")]
     [Authorize]
     [ApiController]
-    public class RoomTypeController : ControllerBase
+    public class RoomController : ControllerBase
     {
         private readonly IMediator _mediator;
 
-        public RoomTypeController(IMediator mediator)
+        public RoomController(IMediator mediator)
         {
             _mediator = mediator;
         }
@@ -22,19 +22,19 @@ namespace HMS.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var result = await _mediator.Send(new GetAllRoomTypesQuery());
+            var result = await _mediator.Send(new GetAllRoomsQuery());
             return result.IsSuccess ? Ok(result.Value) : BadRequest(new { Error = result.Error.Description });
         }
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> Get(Guid id)
         {
-            var result = await _mediator.Send(new GetRoomTypeByIdQuery { Id = id });
+            var result = await _mediator.Send(new GetRoomByIdQuery { Id = id });
             return result.IsSuccess ? Ok(result.Value) : NotFound(new { Error = result.Error.Description });
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateRoomTypeCommand command)
+        public async Task<IActionResult> Create([FromBody] CreateRoomCommand command)
         {
             var result = await _mediator.Send(command);
 
@@ -47,7 +47,7 @@ namespace HMS.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoomTypeCommand command)
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoomCommand command)
         {
             command.Id = id;
             var result = await _mediator.Send(command);
@@ -55,20 +55,27 @@ namespace HMS.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> Delete(Guid id)
+        public async Task<IActionResult> Delete(Guid id, [FromQuery] string? rowVersion)
         {
-            var result = await _mediator.Send(new DeleteRoomTypeCommand { Id = id });
+            var result = await _mediator.Send(new DeleteRoomCommand
+            {
+                Id = id,
+                RowVersion = rowVersion
+            });
+
             return result.IsSuccess ? NoContent() : ToActionResult(result);
         }
 
         private IActionResult ToActionResult(Result result)
         {
-            if (result.Error == Errors.RoomTypeNotFound)
+            if (result.Error == Errors.RoomNotFound || result.Error == Errors.RoomTypeNotFound)
             {
                 return NotFound(new { Error = result.Error.Description });
             }
 
-            if (result.Error == Errors.RoomTypeExists || result.Error == Errors.RoomTypeInUse)
+            if (result.Error == Errors.RoomExists ||
+                result.Error == Errors.RoomHasBookings ||
+                result.Error == Errors.ConcurrencyConflict)
             {
                 return Conflict(new { Error = result.Error.Description });
             }

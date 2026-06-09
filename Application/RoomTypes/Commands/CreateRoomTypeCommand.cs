@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace RoomTypes.Commands
+namespace Application.RoomTypes.Commands
 {
     public record CreateRoomTypeCommand : IRequest<Result<Guid>>
     {
