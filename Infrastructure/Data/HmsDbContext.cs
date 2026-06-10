@@ -1,18 +1,23 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Events;
+using Application.Common.Interfaces;
+using Domain.Common;
 using Domain.Entities;
 using Infrastructure.Identity;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Infrastructure.Data
 {
     public class HmsDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IHmsDbContext
     {
-        public HmsDbContext(DbContextOptions<HmsDbContext> options) : base(options) { }
+        private readonly IPublisher? _publisher;
+
+        public HmsDbContext(DbContextOptions<HmsDbContext> options, IPublisher? publisher = null) : base(options)
+        {
+            _publisher = publisher;
+        }
 
         public DbSet<RoomType> RoomTypes { get; set; }
         public DbSet<Room> Rooms { get; set; }
@@ -24,6 +29,42 @@ namespace Infrastructure.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            await DispatchDomainEventsAsync(cancellationToken);
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task DispatchDomainEventsAsync(CancellationToken cancellationToken)
+        {
+            if (_publisher is null)
+            {
+                return;
+            }
+
+            var entities = ChangeTracker
+                .Entries<IHasDomainEvents>()
+                .Where(entry => entry.Entity.DomainEvents.Count > 0)
+                .Select(entry => entry.Entity)
+                .ToList();
+
+            var domainEvents = entities
+                .SelectMany(entity => entity.DomainEvents)
+                .ToList();
+
+            entities.ForEach(entity => entity.ClearDomainEvents());
+
+            foreach (var domainEvent in domainEvents)
+            {
+                var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
+                var notification = (INotification)Activator.CreateInstance(notificationType, domainEvent)!;
+
+                await _publisher.Publish(notification, cancellationToken);
+            }
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -49,6 +90,9 @@ namespace Infrastructure.Data
                 .WithOne(i => i.Booking)
                 .HasForeignKey<Invoice>(i => i.BookingId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Booking>()
+                .Ignore(b => b.DomainEvents);
 
             modelBuilder.Entity<Booking>()
                 .HasOne(b => b.Guest)
@@ -120,4 +164,3 @@ namespace Infrastructure.Data
         }
     }
 }
-

@@ -1,12 +1,16 @@
-﻿using Domain.Entities.Enums;
+using Domain.Common;
+using Domain.Entities.Enums;
+using Domain.Events;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Domain.Entities
 {
-    public class Booking
+    public class Booking : IHasDomainEvents
     {
+        private readonly List<IDomainEvent> _domainEvents = new();
+
         public static Booking Create(DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid guestId, Guid roomTypeId)
         {
             return new Booking
@@ -31,6 +35,11 @@ namespace Domain.Entities
         public void CheckOut()
         {
             Status = BookingStatus.CheckedOut;
+
+            if (AssignedRoomId.HasValue)
+            {
+                _domainEvents.Add(new BookingCheckedOutEvent(Id, AssignedRoomId.Value));
+            }
         }
 
         public void Update(DateTime chekInDate, DateTime chekOutDate, decimal totalPrice, Guid roomTypeId)
@@ -41,6 +50,7 @@ namespace Domain.Entities
             RoomTypeId = roomTypeId;
             AssignedRoomId = null;
         }
+
         public Guid Id { get; set; }
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
@@ -57,5 +67,11 @@ namespace Domain.Entities
         public Room? AssignedRoom { get; set; }
         public virtual Invoice Invoice { get; set; }
         public virtual ICollection<BookingHistory> History { get; set; } = new List<BookingHistory>();
+        public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+        public void ClearDomainEvents()
+        {
+            _domainEvents.Clear();
+        }
     }
 }

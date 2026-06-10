@@ -40,6 +40,8 @@ namespace Application.ErrorHandling
         public static readonly Error InvalidRoomStatus = new Error("INVALID_ROOM_STATUS", "The specified room status is invalid.");
         public static readonly Error RoomNotAvailable = new Error("ROOM_NOT_AVAILABLE", "The specified room is not available.");
         public static readonly Error RoomTypeMismatch = new Error("ROOM_TYPE_MISMATCH", "The specified room does not match the booking room type.");
+        public static readonly Error CleaningTaskNotFound = new Error("CLEANING_TASK_NOT_FOUND", "The specified cleaning task was not found.");
+        public static readonly Error InvalidCleaningTaskStatus = new Error("INVALID_CLEANING_TASK_STATUS", "The cleaning task status does not allow this operation.");
         public static readonly Error ConcurrencyConflict = new Error("CONCURRENCY_CONFLICT", "The record was modified by another user. Please reload and try again.");
         public static readonly Error BookingDateInPast = new Error("BOOKING_DATE_IN_PAST", "It is not possible to book a room for a date in the past.");
         public static readonly Error BookingCheckInDateLaterThanCheckOut = new Error("CHECKIN_DATE_LATER_THAN_CHECKOUT", "The CheckOut date must be later than the CheckIn date.");

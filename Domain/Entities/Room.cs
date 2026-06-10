@@ -37,6 +37,11 @@ namespace Domain.Entities
             Status = RoomStatus.NeedsCleaning;
         }
 
+        public void MarkAvailable()
+        {
+            Status = RoomStatus.Available;
+        }
+
         public Guid Id { get; set; }
         public string RoomNumber { get; set; }
         public int Floor { get; set; }

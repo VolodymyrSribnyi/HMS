@@ -56,7 +56,6 @@ namespace Application.Bookings.CommandHandlers
             var invoice = Invoice.Create(booking.Id, totalAmount, request.Discount);
 
             booking.CheckOut();
-            booking.AssignedRoom.MarkNeedsCleaning();
             await _context.Invoices.AddAsync(invoice, cancellationToken);
 
             try

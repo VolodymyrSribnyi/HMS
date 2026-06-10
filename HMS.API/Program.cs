@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Infrastructure.Data;
 using Infrastructure.ExceptionHandling;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -91,6 +92,8 @@ namespace HMS.API
 
 
             app.MapControllers();
+
+            SeedData.InitializeAsync(app.Services).GetAwaiter().GetResult();
 
             app.Run();
         }
