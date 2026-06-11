@@ -1,11 +1,9 @@
-﻿using Application.Bookings.Commands;
+using Application.Bookings.Commands;
 using Application.Common.Interfaces;
 using Application.ErrorHandling;
+using Domain.Entities.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Application.Bookings.CommandHandlers
 {
@@ -20,7 +18,6 @@ namespace Application.Bookings.CommandHandlers
 
         public async Task<Result<bool>> Handle(DeleteBookingCommand request, CancellationToken cancellationToken)
         {
-            // 1. Знаходимо бронювання (і підтягуємо Room для Concurrency)
             var booking = await _context.Bookings
                 .Include(b => b.AssignedRoom)
                 .FirstOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken);
@@ -28,20 +25,19 @@ namespace Application.Bookings.CommandHandlers
             if (booking == null)
                 return Result<bool>.Failure(Errors.BookingNotFound);
 
-            // 2. Перевірка безпеки
             if (booking.GuestId != request.GuestId)
                 return Result<bool>.Failure(Errors.UnauthorizedBookingAccess);
 
-            // 3. Видаляємо бронювання (або міняємо статус на Cancelled, якщо ти використовуєш Soft Delete)
-            _context.Bookings.Remove(booking);
+            if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+                return Result<bool>.Failure(Errors.InvalidBookingStatus);
 
-            // 4. Магія конкурентності: оновлюємо версію номеру, оскільки він тепер звільнився
+            booking.Cancel(request.CancellationReason);
+
             if (booking.AssignedRoom != null)
             {
                 _context.Entry(booking.AssignedRoom).State = EntityState.Modified;
             }
 
-            // Ніяких try-catch!
             await _context.SaveChangesAsync(cancellationToken);
 
             return Result<bool>.Success(true);

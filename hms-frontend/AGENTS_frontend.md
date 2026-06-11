@@ -1,3 +1,9 @@
+## UI Design System
+
+All UI generation must follow the rules defined in AGENTS_UI.md.
+
+This document has higher priority than default Tailwind examples.
+
 # AGENTS.md — HMS Frontend (React Client)
 
 > Фронтенд знаходиться у папці `hms-frontend/` від кореня репозиторію.

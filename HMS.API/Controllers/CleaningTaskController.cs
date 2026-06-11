@@ -1,4 +1,5 @@
 using Application.CleaningTasks.Commands;
+using Application.CleaningTasks.Queries;
 using Application.ErrorHandling;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.API.Controllers
 {
     [Route("api/cleaning-tasks")]
+    [Route("api/cleaningtask")]
     [ApiController]
     [Authorize]
     public class CleaningTaskController : ControllerBase
@@ -18,7 +20,17 @@ namespace HMS.API.Controllers
             _mediator = mediator;
         }
 
+        [HttpGet("pending")]
+        [Authorize(Roles = "Maid,Admin")]
+        public async Task<IActionResult> GetPending()
+        {
+            var result = await _mediator.Send(new GetPendingCleaningTasksQuery());
+
+            return result.IsSuccess ? Ok(result.Value) : ToActionResult(result);
+        }
+
         [HttpPost("{id:guid}/complete")]
+        [HttpPut("{id:guid}/complete")]
         [Authorize(Roles = "Maid,Admin")]
         public async Task<IActionResult> Complete(Guid id)
         {

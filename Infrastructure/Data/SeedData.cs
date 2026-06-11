@@ -36,8 +36,8 @@ namespace Infrastructure.Data
             var room201 = await SeedRoomAsync(context, "201", 2, RoomStatus.NeedsCleaning, deluxe.Id);
             var room202 = await SeedRoomAsync(context, "202", 2, RoomStatus.Occupied, deluxe.Id);
 
-            await SeedCheckedInBookingAsync(context, guest.Id, deluxe.Id, room202.Id, deluxe.BasePrice);
-            await SeedPendingCleaningTaskAsync(context, room201.Id, maid.Id);
+            //await SeedCheckedInBookingAsync(context, guest.Id, deluxe.Id, room202.Id, deluxe.BasePrice);
+            //await SeedPendingCleaningTaskAsync(context, room201.Id, maid.Id);
 
             await context.SaveChangesAsync();
         }

@@ -43,6 +43,7 @@ namespace HMS.API.Controllers
         }
 
         [HttpPost("{bookingId:guid}/check-in")]
+        [HttpPost("{bookingId:guid}/checkin")]
         [Authorize(Roles = "Receptionist,Admin")]
         public async Task<IActionResult> CheckIn(Guid bookingId, [FromBody] CheckInBookingCommand command)
         {
@@ -53,12 +54,53 @@ namespace HMS.API.Controllers
         }
 
         [HttpPost("{bookingId:guid}/check-out")]
+        [HttpPost("{bookingId:guid}/checkout")]
         [Authorize(Roles = "Receptionist,Admin")]
         public async Task<IActionResult> CheckOut(Guid bookingId)
         {
             var result = await _mediator.Send(new CheckOutBookingCommand
             {
                 BookingId = bookingId
+            });
+
+            return result.IsSuccess ? NoContent() : ToActionResult(result);
+        }
+
+        [HttpPut("{bookingId:guid}")]
+        [Authorize(Roles = "Guest,Admin")]
+        public async Task<IActionResult> Update(Guid bookingId, [FromBody] UpdateBookingCommand command)
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out Guid guestId))
+            {
+                return Unauthorized(new { Error = "The user could not be identified from the token." });
+            }
+
+            command.BookingId = bookingId;
+            command.GuestId = guestId;
+
+            var result = await _mediator.Send(command);
+
+            return result.IsSuccess ? NoContent() : ToActionResult(result);
+        }
+
+        [HttpDelete("{bookingId:guid}")]
+        [Authorize(Roles = "Guest,Admin")]
+        public async Task<IActionResult> Cancel(Guid bookingId)
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out Guid guestId))
+            {
+                return Unauthorized(new { Error = "The user could not be identified from the token." });
+            }
+
+            var result = await _mediator.Send(new DeleteBookingCommand
+            {
+                BookingId = bookingId,
+                GuestId = guestId,
+                CancellationReason = "Cancelled by guest"
             });
 
             return result.IsSuccess ? NoContent() : ToActionResult(result);
@@ -101,6 +143,11 @@ namespace HMS.API.Controllers
                 result.Error == Errors.ConcurrencyConflict)
             {
                 return Conflict(new { Error = result.Error.Description });
+            }
+
+            if (result.Error == Errors.UnauthorizedBookingAccess)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { Error = result.Error.Description });
             }
 
             return BadRequest(new { Error = result.Error.Description });

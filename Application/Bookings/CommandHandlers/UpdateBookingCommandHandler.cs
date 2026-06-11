@@ -56,6 +56,7 @@ namespace Application.Bookings.CommandHandlers
             decimal totalPrice = room.CalculateTotalPrice(request.CheckInDate, request.CheckOutDate);
 
             booking.Update(request.CheckInDate, request.CheckOutDate, totalPrice, room.RoomTypeId);
+            booking.AssignRoom(room.Id);
 
             await _context.SaveChangesAsync(cancellationToken);
 

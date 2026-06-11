@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMS.API.Controllers
 {
     [Route("api/[controller]")]
+    [Route("api/rooms")]
     [Authorize]
     [ApiController]
     public class RoomController : ControllerBase
@@ -24,6 +25,13 @@ namespace HMS.API.Controllers
         {
             var result = await _mediator.Send(new GetAllRoomsQuery());
             return result.IsSuccess ? Ok(result.Value) : BadRequest(new { Error = result.Error.Description });
+        }
+
+        [HttpGet("available")]
+        public async Task<IActionResult> GetAvailable([FromQuery] GetAvailableRoomsQuery query)
+        {
+            var result = await _mediator.Send(query);
+            return result.IsSuccess ? Ok(result.Value) : ToActionResult(result);
         }
 
         [HttpGet("{id:guid}")]

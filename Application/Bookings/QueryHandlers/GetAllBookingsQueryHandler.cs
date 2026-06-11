@@ -28,6 +28,7 @@ namespace Application.Bookings.QueryHandlers
             var bookings = await _context.Bookings
                 .AsNoTracking()
                 .Include(b => b.RoomType)
+                .Include(b => b.AssignedRoom)
                 .ToListAsync(cancellationToken);
 
             if (bookings == null)

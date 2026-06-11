@@ -32,6 +32,11 @@ namespace Domain.Entities
             Status = BookingStatus.CheckedIn;
         }
 
+        public void AssignRoom(Guid assignedRoomId)
+        {
+            AssignedRoomId = assignedRoomId;
+        }
+
         public void CheckOut()
         {
             Status = BookingStatus.CheckedOut;
@@ -49,6 +54,13 @@ namespace Domain.Entities
             TotalPrice = totalPrice;
             RoomTypeId = roomTypeId;
             AssignedRoomId = null;
+        }
+
+        public void Cancel(string? cancellationReason = null)
+        {
+            Status = BookingStatus.Cancelled;
+            CancelledAt = DateTime.UtcNow;
+            CancellationReason = cancellationReason;
         }
 
         public Guid Id { get; set; }

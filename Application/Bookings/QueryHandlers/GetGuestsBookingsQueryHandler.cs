@@ -21,7 +21,9 @@ namespace Application.Bookings.QueryHandlers
         public async Task<Result<IEnumerable<GetBookingDTO>>> Handle(GetGuestsBookingsQuery request, CancellationToken cancellationToken)
         {
             var bookings = await _context.Bookings
+            .AsNoTracking()
             .Include(b => b.RoomType)
+            .Include(b => b.AssignedRoom)
             .Where(b => b.GuestId == request.GuestId)
             .OrderByDescending(b => b.CheckInDate)
             //.ProjectTo<GetBookingDTO>(_mapper.ConfigurationProvider)

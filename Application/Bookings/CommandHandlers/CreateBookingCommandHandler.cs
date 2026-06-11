@@ -48,6 +48,7 @@ namespace Application.Bookings.CommandHandlers
 
             decimal totalPrice = room.CalculateTotalPrice(request.CheckInDate, request.CheckOutDate);
             var booking = Booking.Create(request.CheckInDate, request.CheckOutDate, totalPrice, request.GuestId, room.RoomTypeId);
+            booking.AssignRoom(request.RoomId);
 
             await _context.Bookings.AddAsync(booking, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);

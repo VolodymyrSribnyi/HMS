@@ -15,5 +15,6 @@ namespace Application.DTOs.Booking
         public decimal TotalPrice { get; set; }
         public string RoomTypeName { get; set; }
         public Guid? AssignedRoomId { get; set; }
+        public string? AssignedRoomNumber { get; set; }
     }
 }

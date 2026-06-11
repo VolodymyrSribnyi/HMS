@@ -47,7 +47,7 @@ namespace Application.ErrorHandling
         public static readonly Error BookingCheckInDateLaterThanCheckOut = new Error("CHECKIN_DATE_LATER_THAN_CHECKOUT", "The CheckOut date must be later than the CheckIn date.");
         public static readonly Error BookingRaceCondition = new Error("BOOKING_RACE_CONDITION", "Unfortunately, someone else has just booked this room for your dates. Please try again");
         public static readonly Error RoomIsBooked = new Error("ROOM_BOOKED_ON_THESE_DATES", "Unfortunately, this room is already booked for the dates you’ve chosen");
-        public static readonly Error UnauthorizedBookingAccess = new Error("", "");
+        public static readonly Error UnauthorizedBookingAccess = new Error("UNAUTHORIZED_BOOKING_ACCESS", "You do not have access to this booking.");
         public static readonly Error InvalidToken = new Error("AUTH_INVALID_TOKEN", "Invalid Refresh Token.");
         public static readonly Error TokenExpired = new Error("AUTH_EXPIRED_TOKEN", "Expired Refresh Token.");
         public static readonly Error AuthFailed = new Error("AUTH_FAILED", "Failed to authenticate.");

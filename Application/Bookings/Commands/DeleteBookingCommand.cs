@@ -10,5 +10,6 @@ namespace Application.Bookings.Commands
     {
         public Guid BookingId { get; set; }
         public Guid GuestId { get; set; } // ID поточного користувача з токена
+        public string? CancellationReason { get; set; }
     }
 }

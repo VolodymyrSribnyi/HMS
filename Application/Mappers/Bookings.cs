@@ -13,7 +13,9 @@ namespace Application.Mappers
         {
             CreateMap<Booking, GetBookingDTO>()
                 .ForMember(dest => dest.RoomTypeName,
-                           opt => opt.MapFrom(src => src.RoomType.Name));
+                           opt => opt.MapFrom(src => src.RoomType.Name))
+                .ForMember(dest => dest.AssignedRoomNumber,
+                           opt => opt.MapFrom(src => src.AssignedRoom != null ? src.AssignedRoom.RoomNumber : null));
         }
     }
 }
