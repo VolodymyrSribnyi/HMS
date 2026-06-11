@@ -3,4 +3,5 @@
   <Project Path="Domain/01_Domain.csproj" />
   <Project Path="HMS.API/HMS.API.csproj" />
   <Project Path="Infrastructure/03Infrastructure.csproj" />
+  <Project Path="tests/Application.UnitTests/Application.UnitTests.csproj" />
 </Solution>

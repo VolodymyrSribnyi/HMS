@@ -1,4 +1,5 @@
 using Application.Common.Behavior;
+using Application.Common.Behaviors;
 using Application.Mappers;
 using FluentValidation;
 using MediatR;
@@ -10,8 +11,12 @@ namespace Application
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-            services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+                cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+                cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
+            });
 
             var assembly = typeof(DependencyInjection).Assembly;
             var validatorTypes = assembly.GetTypes()

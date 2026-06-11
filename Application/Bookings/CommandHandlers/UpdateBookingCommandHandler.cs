@@ -29,13 +29,22 @@ namespace Application.Bookings.CommandHandlers
             if (booking == null)
                 return Result<bool>.Failure(Errors.BookingNotFound);
 
-            if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
-                return Result<bool>.Failure(Errors.InvalidBookingStatus);
-
-            if (booking.GuestId != request.GuestId)
+            if (!request.CanOverrideBookingAccess && booking.GuestId != request.GuestId)
                 return Result<bool>.Failure(Errors.UnauthorizedBookingAccess);
 
-            if (await _repository.IsBookingDateInPast(request.CheckInDate.Date, request.CheckOutDate.Date))
+            var canUpdateFutureBooking = booking.Status is BookingStatus.Pending or BookingStatus.Confirmed;
+            var canExtendCheckedInBooking = request.CanUpdateCheckedInBooking && booking.Status == BookingStatus.CheckedIn;
+
+            if (!canUpdateFutureBooking && !canExtendCheckedInBooking)
+                return Result<bool>.Failure(Errors.InvalidBookingStatus);
+
+            if (!request.CanOverrideBookingAccess && DateTime.UtcNow >= booking.CheckInDate)
+                return Result<bool>.Failure(Errors.InvalidBookingStatus);
+
+            if (canExtendCheckedInBooking && request.CheckInDate.Date != booking.CheckInDate.Date)
+                return Result<bool>.Failure(Errors.InvalidBookingStatus);
+
+            if (!canExtendCheckedInBooking && await _repository.IsBookingDateInPast(request.CheckInDate.Date, request.CheckOutDate.Date))
                 return Result<bool>.Failure(Errors.BookingDateInPast);
 
             if (await _repository.IsBookingCheckInDateLaterThanCheckOut(request.CheckInDate.Date, request.CheckOutDate.Date))

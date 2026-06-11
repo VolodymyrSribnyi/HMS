@@ -67,7 +67,7 @@ namespace HMS.API.Controllers
         }
 
         [HttpPut("{bookingId:guid}")]
-        [Authorize(Roles = "Guest,Admin")]
+        [Authorize(Roles = "Guest,Receptionist,Admin")]
         public async Task<IActionResult> Update(Guid bookingId, [FromBody] UpdateBookingCommand command)
         {
             var userId = User.FindFirst("UserId")?.Value;
@@ -79,6 +79,8 @@ namespace HMS.API.Controllers
 
             command.BookingId = bookingId;
             command.GuestId = guestId;
+            command.CanOverrideBookingAccess = User.IsInRole("Receptionist") || User.IsInRole("Admin");
+            command.CanUpdateCheckedInBooking = User.IsInRole("Receptionist") || User.IsInRole("Admin");
 
             var result = await _mediator.Send(command);
 
@@ -86,7 +88,7 @@ namespace HMS.API.Controllers
         }
 
         [HttpDelete("{bookingId:guid}")]
-        [Authorize(Roles = "Guest,Admin")]
+        [Authorize(Roles = "Guest,Receptionist,Admin")]
         public async Task<IActionResult> Cancel(Guid bookingId)
         {
             var userId = User.FindFirst("UserId")?.Value;
@@ -100,19 +102,54 @@ namespace HMS.API.Controllers
             {
                 BookingId = bookingId,
                 GuestId = guestId,
-                CancellationReason = "Cancelled by guest"
+                CancellationReason = User.IsInRole("Receptionist") || User.IsInRole("Admin")
+                    ? "Cancelled by staff"
+                    : "Cancelled by guest",
+                CanOverrideBookingAccess = User.IsInRole("Receptionist") || User.IsInRole("Admin"),
+                CanCancelCheckedInBooking = User.IsInRole("Admin")
             });
 
             return result.IsSuccess ? NoContent() : ToActionResult(result);
         }
 
         [HttpGet]
+        [Authorize(Roles = "Receptionist,Admin")]
         public async Task<IActionResult> GetAll()
         {
             var result = await _mediator.Send(new GetAllBookingsQuery());
             return result.IsSuccess ? Ok(result.Value) : ToActionResult(result);
         }
 
+        [HttpGet("reception-dashboard")]
+        [Authorize(Roles = "Receptionist,Admin")]
+        public async Task<IActionResult> GetReceptionDashboard()
+        {
+            var result = await _mediator.Send(new GetReceptionDashboardBookingsQuery());
+            return result.IsSuccess ? Ok(result.Value) : ToActionResult(result);
+        }
+
+        [HttpGet("{bookingId:guid}")]
+        [Authorize(Roles = "Guest,Receptionist,Admin")]
+        public async Task<IActionResult> GetById(Guid bookingId)
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out Guid requesterId))
+            {
+                return Unauthorized(new { Error = "The user could not be identified from the token." });
+            }
+
+            var result = await _mediator.Send(new GetBookingByIdQuery
+            {
+                BookingId = bookingId,
+                RequesterId = requesterId,
+                CanViewAllBookings = User.IsInRole("Receptionist") || User.IsInRole("Admin")
+            });
+
+            return result.IsSuccess ? Ok(result.Value) : ToActionResult(result);
+        }
+
+        [HttpGet("my")]
         [HttpGet("my-bookings")]
         public async Task<IActionResult> GetMyBookings()
         {

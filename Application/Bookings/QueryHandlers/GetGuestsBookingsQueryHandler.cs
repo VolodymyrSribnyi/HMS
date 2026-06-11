@@ -21,17 +21,25 @@ namespace Application.Bookings.QueryHandlers
         public async Task<Result<IEnumerable<GetBookingDTO>>> Handle(GetGuestsBookingsQuery request, CancellationToken cancellationToken)
         {
             var bookings = await _context.Bookings
-            .AsNoTracking()
-            .Include(b => b.RoomType)
-            .Include(b => b.AssignedRoom)
-            .Where(b => b.GuestId == request.GuestId)
-            .OrderByDescending(b => b.CheckInDate)
-            //.ProjectTo<GetBookingDTO>(_mapper.ConfigurationProvider)
-            .ToListAsync(cancellationToken);
+                .AsNoTracking()
+                .Where(b => b.GuestId == request.GuestId)
+                .OrderByDescending(b => b.CheckInDate)
+                .Select(b => new GetBookingDTO
+                {
+                    Id = b.Id,
+                    CheckInDate = b.CheckInDate,
+                    CheckOutDate = b.CheckOutDate,
+                    Status = b.Status,
+                    TotalPrice = b.TotalPrice,
+                    RoomTypeName = b.RoomType.Name,
+                    AssignedRoomId = b.AssignedRoomId,
+                    AssignedRoomNumber = b.AssignedRoom != null ? b.AssignedRoom.RoomNumber : null,
+                    GuestId = b.GuestId,
+                    GuestFullName = b.Guest != null ? (b.Guest.FirstName + " " + b.Guest.LastName).Trim() : null
+                })
+                .ToListAsync(cancellationToken);
 
-            var bookingsDto = _mapper.Map<List<GetBookingDTO>>(bookings);
-
-            return Result<IEnumerable<GetBookingDTO>>.Success(bookingsDto);
+            return Result<IEnumerable<GetBookingDTO>>.Success(bookings);
         }
     }
 }

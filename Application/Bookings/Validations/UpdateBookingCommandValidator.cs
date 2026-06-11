@@ -17,9 +17,7 @@ namespace Application.Bookings.Validations
                 .NotEmpty().WithMessage("The room must be specified.");
 
             RuleFor(command => command.CheckInDate)
-                .NotEmpty().WithMessage("The check-in date must be specified.")
-                .Must(date => date.Date >= DateTime.UtcNow.Date)
-                .WithMessage("The check-in date cannot be in the past.");
+                .NotEmpty().WithMessage("The check-in date must be specified.");
 
             RuleFor(command => command.CheckOutDate)
                 .NotEmpty().WithMessage("The check-out date must be specified.")

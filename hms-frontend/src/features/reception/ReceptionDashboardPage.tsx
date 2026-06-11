@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BookingDto } from '../../types/booking';
 import { checkInBooking, checkOutBooking, getReceptionBookings } from './receptionApi';
-import { isExpectedArrivalStatus, isExpectedDepartureStatus, normalizeBookingStatus } from '../../lib/bookingStatus';
+import { normalizeBookingStatus } from '../../lib/bookingStatus';
 
 const panelShadow = 'shadow-[8px_8px_16px_rgba(163,177,198,0.6),-8px_-8px_16px_rgba(255,255,255,0.9)]';
 const cardShadow = 'shadow-[6px_6px_12px_rgba(163,177,198,0.35),-6px_-6px_12px_rgba(255,255,255,0.85)]';
@@ -16,16 +16,39 @@ const getApiError = (error: unknown): string | undefined => {
 };
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString('uk-UA');
+const toDateKey = (value: string | Date) => {
+  if (typeof value === 'string') {
+    const hasTimezone = /(?:z|[+-]\d{2}:\d{2})$/i.test(value);
+    const dateOnly = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+
+    if (dateOnly && !hasTimezone) {
+      return dateOnly;
+    }
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value;
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
 
 interface BookingRowProps {
   booking: BookingDto;
   actionLabel: string;
   isBusy: boolean;
   isDisabled?: boolean;
+  disabledReason?: string;
   onAction: (booking: BookingDto) => void;
 }
 
-const BookingRow = ({ booking, actionLabel, isBusy, isDisabled, onAction }: BookingRowProps) => (
+const BookingRow = ({ booking, actionLabel, isBusy, isDisabled, disabledReason, onAction }: BookingRowProps) => (
   <div className={`rounded-3xl bg-[#edf1f7] p-4 ${cardShadow}`}>
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
@@ -51,6 +74,11 @@ const BookingRow = ({ booking, actionLabel, isBusy, isDisabled, onAction }: Book
         {isBusy ? 'Обробка...' : actionLabel}
       </button>
     </div>
+    {isDisabled && disabledReason && (
+      <p className="mt-3 rounded-2xl bg-[#edf1f7] px-4 py-2 text-sm font-medium text-[#718096] shadow-[inset_4px_4px_8px_rgba(163,177,198,0.28),inset_-4px_-4px_8px_rgba(255,255,255,0.85)]">
+        {disabledReason}
+      </p>
+    )}
   </div>
 );
 
@@ -77,14 +105,40 @@ export const ReceptionDashboardPage = () => {
     loadBookings();
   }, []);
 
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
+  const tomorrowKey = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return toDateKey(date);
+  }, []);
+
   const expectedArrivals = useMemo(
-    () => bookings.filter((booking) => isExpectedArrivalStatus(booking.status)),
-    [bookings],
+    () =>
+      bookings.filter(
+        (booking) => {
+          const status = normalizeBookingStatus(booking.status);
+          const checkInKey = toDateKey(booking.checkInDate);
+          return (
+            (status === 'Pending' || status === 'Confirmed') &&
+            (checkInKey === todayKey || checkInKey === tomorrowKey)
+          );
+        },
+      ),
+    [bookings, todayKey, tomorrowKey],
   );
 
   const expectedDepartures = useMemo(
-    () => bookings.filter((booking) => isExpectedDepartureStatus(booking.status)),
-    [bookings],
+    () =>
+      bookings.filter(
+        (booking) => {
+          const checkOutKey = toDateKey(booking.checkOutDate);
+          return (
+            normalizeBookingStatus(booking.status) === 'CheckedIn' &&
+            (checkOutKey === todayKey || checkOutKey === tomorrowKey)
+          );
+        },
+      ),
+    [bookings, todayKey, tomorrowKey],
   );
 
   const setBookingBusy = (bookingId: string, isBusy: boolean) => {
@@ -140,7 +194,7 @@ export const ReceptionDashboardPage = () => {
     <div className="space-y-8 text-[#2d3748]">
       <div>
         <h1 className="text-3xl font-bold">Дашборд рецепції</h1>
-        <p className="mt-2 text-[#718096]">Керуйте заселеннями та виселеннями гостей.</p>
+        <p className="mt-2 text-[#718096]">Керуйте заселеннями та виселеннями гостей на сьогодні та завтра.</p>
       </div>
 
       {error && (
@@ -170,7 +224,12 @@ export const ReceptionDashboardPage = () => {
                   booking={booking}
                   actionLabel="Заселити"
                   isBusy={busyBookingIds.includes(booking.id)}
-                  isDisabled={!booking.assignedRoomId}
+                  isDisabled={!booking.assignedRoomId || toDateKey(booking.checkInDate) !== todayKey}
+                  disabledReason={
+                    !booking.assignedRoomId
+                      ? 'Для цього бронювання ще не призначено номер.'
+                      : 'Заселення буде доступне тільки в день заїзду.'
+                  }
                   onAction={handleCheckIn}
                 />
               ))
@@ -198,6 +257,8 @@ export const ReceptionDashboardPage = () => {
                   booking={booking}
                   actionLabel="Виселити"
                   isBusy={busyBookingIds.includes(booking.id)}
+                  isDisabled={toDateKey(booking.checkOutDate) !== todayKey}
+                  disabledReason="Виселення буде доступне тільки в день виїзду."
                   onAction={handleCheckOut}
                 />
               ))

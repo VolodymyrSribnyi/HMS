@@ -1,338 +1,341 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState, type InputHTMLAttributes } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { canModifyBookingStatus, normalizeBookingStatus } from '../../lib/bookingStatus';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { normalizeBookingStatus, type BookingStatusName } from '../../lib/bookingStatus';
 import { type BookingDto } from '../../types/booking';
-import { cancelBooking, getMyBookings, updateBookingDates } from './bookingApi';
+import { useAuthStore } from '../auth/stores/authStore';
+import { getAllBookings, getMyBookings } from './bookingApi';
 
-const pageShadow = 'shadow-[10px_10px_22px_rgba(163,177,198,0.35),-10px_-10px_22px_rgba(255,255,255,0.9)]';
-const floatingShadow = 'shadow-[8px_8px_18px_rgba(163,177,198,0.32),-8px_-8px_18px_rgba(255,255,255,0.88)]';
+const panelShadow = 'shadow-[8px_8px_16px_rgba(163,177,198,0.6),-8px_-8px_16px_rgba(255,255,255,0.9)]';
+const cardShadow = 'shadow-[6px_6px_12px_rgba(163,177,198,0.35),-6px_-6px_12px_rgba(255,255,255,0.85)]';
 const insetShadow = 'shadow-[inset_5px_5px_10px_rgba(163,177,198,0.35),inset_-5px_-5px_10px_rgba(255,255,255,0.85)]';
 const activeInsetShadow = 'active:shadow-[inset_5px_5px_10px_rgba(163,177,198,0.35),inset_-5px_-5px_10px_rgba(255,255,255,0.85)]';
-
-const dateSchema = z.object({
-  checkInDate: z.string().min(1, 'Вкажіть дату заїзду'),
-  checkOutDate: z.string().min(1, 'Вкажіть дату виїзду'),
-}).refine((data) => new Date(data.checkOutDate) > new Date(data.checkInDate), {
-  message: 'Дата виїзду повинна бути пізніше дати заїзду',
-  path: ['checkOutDate'],
-});
-
-type DateFormValues = z.infer<typeof dateSchema>;
+const inputClass = `rounded-2xl bg-[#edf1f7] px-4 py-3 text-sm text-[#2d3748] outline-none transition-all duration-200 placeholder:text-[#9aa7ba] focus:shadow-[inset_5px_5px_10px_rgba(163,177,198,0.3),inset_-5px_-5px_10px_rgba(255,255,255,0.9),0_0_0_3px_rgba(79,124,255,0.18)] ${insetShadow}`;
+const softButtonClass = `rounded-2xl bg-[#edf1f7] px-4 py-3 text-sm font-semibold text-[#4f7cff] transition-all duration-200 hover:scale-[1.02] ${cardShadow} ${activeInsetShadow}`;
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString('uk-UA');
-const toDateInputValue = (value: string) => new Date(value).toISOString().slice(0, 10);
-const canModify = (booking: BookingDto) => canModifyBookingStatus(booking.status);
+const formatMoney = (value: number) => `${value.toFixed(2)} грн`;
+const getDateOnly = (value: string) => value.slice(0, 10);
+const dateToTime = (value: string) => new Date(`${value}T00:00:00`).getTime();
+const todayTime = dateToTime(new Date().toISOString().slice(0, 10));
+const getGuestDisplayName = (booking: BookingDto) => {
+  const guestName = booking.guestFullName?.trim();
+  if (guestName) return guestName;
+  if (booking.guestId) return `Гість ${booking.guestId.slice(0, 8)}`;
+  return 'Профіль гостя не знайдено';
+};
 
-const getStatusStyle = (status: string | number) => {
+const getRoomDisplayName = (booking: BookingDto, canManageBookings: boolean) => {
+  const roomNumber = booking.assignedRoomNumber?.trim();
+
+  if (canManageBookings) {
+    return roomNumber ? `Номер ${roomNumber}` : 'Не призначено';
+  }
+
+  const status = normalizeBookingStatus(booking.status);
+
+  if (status === 'Pending' || status === 'Confirmed') {
+    return 'Визначиться при заселенні';
+  }
+
+  if (status === 'CheckedIn') {
+    return roomNumber ? `Номер ${roomNumber}` : 'Не призначено';
+  }
+
+  return roomNumber ? `Номер ${roomNumber}` : 'Не призначено';
+};
+
+interface BookingStatusBadgeProps {
+  status: string | number;
+}
+
+const statusStyles: Record<BookingStatusName, string> = {
+  Pending: 'bg-[#e8ecf2] text-[#718096]',
+  Confirmed: 'bg-[#e4eefc] text-[#4f7cff]',
+  CheckedIn: 'bg-[#e0f4ec] text-[#2fb67d]',
+  CheckedOut: 'bg-[#e5e9ef] text-[#718096]',
+  Cancelled: 'bg-[#f7e4e4] text-[#e45858]',
+};
+
+const BookingStatusBadge = ({ status }: BookingStatusBadgeProps) => {
   const normalizedStatus = normalizeBookingStatus(status);
-  if (normalizedStatus === 'Cancelled') return 'bg-[#f7e4e4] text-[#e45858]';
-  if (normalizedStatus === 'CheckedIn') return 'bg-[#e4eefc] text-[#4f7cff]';
-  if (normalizedStatus === 'CheckedOut') return 'bg-[#e5e9ef] text-[#718096]';
-  return 'bg-[#e0f4ec] text-[#2fb67d]';
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[normalizedStatus]} ${insetShadow}`}>
+      {normalizedStatus}
+    </span>
+  );
+};
+
+const hasRole = (roles: string[], role: string) =>
+  roles.some((userRole) => userRole.toLowerCase() === role.toLowerCase());
+
+type BookingViewFilter = 'all' | 'active' | 'past';
+
+const bookingViewFilters: Array<{ value: BookingViewFilter; label: string }> = [
+  { value: 'all', label: 'Усі' },
+  { value: 'active', label: 'Актуальні' },
+  { value: 'past', label: 'Минулі' },
+];
+
+const isPastBooking = (booking: BookingDto) => {
+  const status = normalizeBookingStatus(booking.status);
+  const checkOutTime = dateToTime(getDateOnly(booking.checkOutDate));
+
+  return status === 'CheckedOut' || status === 'Cancelled' || checkOutTime < todayTime;
 };
 
 export const BookingsPage = () => {
+  const navigate = useNavigate();
+  const roles = useAuthStore((state) => state.roles);
   const [bookings, setBookings] = useState<BookingDto[]>([]);
-  const [selectedBooking, setSelectedBooking] = useState<BookingDto | null>(null);
-  const [bookingToCancel, setBookingToCancel] = useState<BookingDto | null>(null);
+  const [viewFilter, setViewFilter] = useState<BookingViewFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [busyAction, setBusyAction] = useState<'update' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<DateFormValues>({
-    resolver: zodResolver(dateSchema),
-  });
+  const canManageBookings = useMemo(
+    () => hasRole(roles, 'Receptionist') || hasRole(roles, 'Admin'),
+    [roles],
+  );
 
-  const loadBookings = async () => {
+  const pageTitle = canManageBookings ? 'Управління бронюваннями' : 'Мої бронювання';
+  const hasActiveFilters = viewFilter !== 'all' || searchQuery.trim() !== '' || dateFrom !== '' || dateTo !== '';
+
+  const filteredBookings = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filterStart = dateFrom ? dateToTime(dateFrom) : null;
+    const filterEnd = dateTo ? dateToTime(dateTo) : null;
+
+    return bookings.filter((booking) => {
+      const isPast = isPastBooking(booking);
+
+      if (viewFilter === 'past' && !isPast) {
+        return false;
+      }
+
+      if (viewFilter === 'active' && isPast) {
+        return false;
+      }
+
+      if (!canManageBookings) {
+        return true;
+      }
+
+      const roomNumber = booking.assignedRoomNumber ?? '';
+      const roomType = booking.roomTypeName ?? '';
+      const guestName = getGuestDisplayName(booking);
+      const matchesText =
+        query === '' ||
+        roomNumber.toLowerCase().includes(query) ||
+        roomType.toLowerCase().includes(query) ||
+        guestName.toLowerCase().includes(query);
+
+      const bookingStart = dateToTime(getDateOnly(booking.checkInDate));
+      const bookingEnd = dateToTime(getDateOnly(booking.checkOutDate));
+      const matchesDateFrom = filterStart === null || bookingEnd >= filterStart;
+      const matchesDateTo = filterEnd === null || bookingStart <= filterEnd;
+
+      return matchesText && matchesDateFrom && matchesDateTo;
+    });
+  }, [bookings, canManageBookings, dateFrom, dateTo, searchQuery, viewFilter]);
+
+  const clearFilters = () => {
+    setViewFilter('all');
+    setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const loadBookings = async (showLoading = true) => {
     try {
-      setIsLoading(true);
       setError(null);
-      const data = await getMyBookings();
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      const data = canManageBookings ? await getAllBookings() : await getMyBookings();
       setBookings(data);
+      return data;
     } catch {
-      setError('Не вдалося завантажити ваші бронювання. Спробуйте пізніше.');
+      setError('Не вдалося завантажити бронювання. Спробуйте пізніше.');
+      return [];
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void loadBookings();
-  }, []);
-
-  const openBooking = (booking: BookingDto) => {
-    setSelectedBooking(booking);
-    setMessage(null);
-    setError(null);
-    reset({
-      checkInDate: toDateInputValue(booking.checkInDate),
-      checkOutDate: toDateInputValue(booking.checkOutDate),
-    });
-  };
-
-  const refreshSelectedBooking = (bookingId: string, refreshedBookings: BookingDto[]) => {
-    const refreshed = refreshedBookings.find((booking) => booking.id === bookingId) ?? null;
-    setSelectedBooking(refreshed);
-
-    if (refreshed) {
-      reset({
-        checkInDate: toDateInputValue(refreshed.checkInDate),
-        checkOutDate: toDateInputValue(refreshed.checkOutDate),
-      });
-    }
-  };
-
-  const handleUpdateDates = async (values: DateFormValues) => {
-    if (!selectedBooking) return;
-
-    const roomId = selectedBooking.assignedRoomId ?? selectedBooking.roomId;
-    if (!roomId) {
-      setError('Для цього бронювання не знайдено номер, тому дату змінити неможливо.');
-      return;
-    }
-
-    try {
-      setBusyAction('update');
-      setError(null);
-      setMessage(null);
-      await updateBookingDates(selectedBooking.id, {
-        roomId,
-        checkInDate: values.checkInDate,
-        checkOutDate: values.checkOutDate,
-      });
-
-      const refreshedBookings = await getMyBookings();
-      setBookings(refreshedBookings);
-      refreshSelectedBooking(selectedBooking.id, refreshedBookings);
-      setMessage('Дати бронювання оновлено.');
-    } catch {
-      setError('Не вдалося змінити дати. Перевірте доступність номера на вибраний період.');
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleCancelBooking = async () => {
-    if (!bookingToCancel) return;
-
-    try {
-      setBusyAction('cancel');
-      setError(null);
-      setMessage(null);
-      await cancelBooking(bookingToCancel.id);
-
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.id === bookingToCancel.id ? { ...booking, status: 'Cancelled' } : booking,
-        ),
-      );
-      setSelectedBooking(null);
-      setBookingToCancel(null);
-      setMessage('Бронювання скасовано.');
-    } catch {
-      setError('Не вдалося скасувати бронювання. Можливо, його статус уже не дозволяє цю дію.');
-    } finally {
-      setBusyAction(null);
-    }
-  };
+  }, [canManageBookings]);
 
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className={`rounded-3xl bg-[#edf1f7] px-8 py-5 text-xl font-semibold text-[#718096] ${pageShadow}`}>
-          Завантаження...
-        </div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#d8dfeb] border-t-[#4f7cff]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-full bg-[#e8ecf2] text-[#2d3748]">
-      <div className="mb-8 flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Мої бронювання</h1>
-        <p className="text-[#718096]">Переглядайте деталі, змінюйте дати або скасовуйте майбутні бронювання.</p>
+    <div className="space-y-8 text-[#2d3748]">
+      <div>
+        <h1 className="text-3xl font-bold">{pageTitle}</h1>
+        <p className="mt-2 text-[#718096]">
+          {canManageBookings
+            ? 'Переглядайте бронювання гостей та відкривайте повну інформацію.'
+            : 'Переглядайте свої бронювання та деталі проживання.'}
+        </p>
       </div>
 
       {error && (
-        <div className={`mb-6 rounded-3xl bg-[#f7e4e4] p-5 font-medium text-[#e45858] ${floatingShadow}`}>
+        <div className={`rounded-3xl bg-[#f7e4e4] p-4 font-medium text-[#e45858] ${insetShadow}`}>
           {error}
         </div>
       )}
 
-      {message && (
-        <div className={`mb-6 rounded-3xl bg-[#e0f4ec] p-5 font-medium text-[#2fb67d] ${floatingShadow}`}>
-          {message}
-        </div>
-      )}
-
-      {bookings.length === 0 ? (
-        <div className={`rounded-3xl bg-[#edf1f7] p-12 text-center ${pageShadow}`}>
-          <p className="text-lg font-semibold text-[#718096]">У вас немає бронювань.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {bookings.map((booking) => (
-            <button
-              key={booking.id}
-              type="button"
-              onClick={() => openBooking(booking)}
-              className={`rounded-3xl bg-[#edf1f7] p-6 text-left transition-all duration-200 hover:scale-[1.01] ${activeInsetShadow} ${floatingShadow}`}
-            >
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(booking.status)}`}>
-                  {normalizeBookingStatus(booking.status)}
-                </span>
-                <span className="text-xl font-bold text-[#2d3748]">{booking.totalPrice.toFixed(2)} ₴</span>
-              </div>
-
-              <h3 className="text-xl font-bold text-[#2d3748]">{booking.roomTypeName}</h3>
-              <p className="mt-1 text-sm text-[#718096]">
-                Номер: {booking.assignedRoomNumber ?? 'буде призначено'}
-              </p>
-
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                <div className={`rounded-2xl bg-[#edf1f7] p-3 ${insetShadow}`}>
-                  <p className="text-[#718096]">Заїзд</p>
-                  <p className="font-semibold">{formatDate(booking.checkInDate)}</p>
-                </div>
-                <div className={`rounded-2xl bg-[#edf1f7] p-3 ${insetShadow}`}>
-                  <p className="text-[#718096]">Виїзд</p>
-                  <p className="font-semibold">{formatDate(booking.checkOutDate)}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selectedBooking && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#2d3748]/20 p-4 backdrop-blur-sm">
-          <div className={`max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-[#edf1f7] p-7 ${pageShadow}`}>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className={`mb-3 inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(selectedBooking.status)}`}>
-                  {normalizeBookingStatus(selectedBooking.status)}
-                </p>
-                <h2 className="text-2xl font-bold">Деталі бронювання</h2>
-                <p className="text-[#718096]">ID: {selectedBooking.id}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedBooking(null)}
-                className={`rounded-2xl bg-[#edf1f7] px-4 py-2 font-semibold text-[#718096] transition hover:text-[#2d3748] ${floatingShadow}`}
-              >
-                Закрити
-              </button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <InfoBlock label="Тип номера" value={selectedBooking.roomTypeName} />
-              <InfoBlock label="Номер" value={selectedBooking.assignedRoomNumber ?? 'буде призначено'} />
-              <InfoBlock label="Дата заїзду" value={formatDate(selectedBooking.checkInDate)} />
-              <InfoBlock label="Дата виїзду" value={formatDate(selectedBooking.checkOutDate)} />
-              <InfoBlock label="Сума" value={`${selectedBooking.totalPrice.toFixed(2)} ₴`} />
-              <InfoBlock label="Статус" value={normalizeBookingStatus(selectedBooking.status)} />
-            </div>
-
-            <form className="mt-7 space-y-5" onSubmit={handleSubmit(handleUpdateDates)}>
-              <div>
-                <h3 className="text-lg font-bold">Змінити дати</h3>
-                <p className="text-sm text-[#718096]">Зміна доступна лише для бронювань зі статусом Pending або Confirmed.</p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <DateField label="Нова дата заїзду" error={errors.checkInDate?.message} {...register('checkInDate')} />
-                <DateField label="Нова дата виїзду" error={errors.checkOutDate?.message} {...register('checkOutDate')} />
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="submit"
-                  disabled={!canModify(selectedBooking) || busyAction === 'update'}
-                  className={`rounded-2xl bg-[#4f7cff] px-5 py-3 font-bold text-white transition hover:bg-[#416ce0] ${activeInsetShadow} disabled:cursor-not-allowed disabled:opacity-60`}
-                >
-                  {busyAction === 'update' ? 'Оновлення...' : 'Зберегти дати'}
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!canModify(selectedBooking) || busyAction === 'cancel'}
-                  onClick={() => setBookingToCancel(selectedBooking)}
-                  className={`rounded-2xl bg-[#f7e4e4] px-5 py-3 font-bold text-[#e45858] transition hover:bg-[#f2d5d5] ${activeInsetShadow} disabled:cursor-not-allowed disabled:opacity-60`}
-                >
-                  Скасувати бронювання
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {bookingToCancel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2d3748]/25 p-4 backdrop-blur-sm">
-          <div className={`w-full max-w-md rounded-[28px] bg-[#edf1f7] p-7 ${pageShadow}`}>
-            <h2 className="text-2xl font-bold">Скасувати бронювання?</h2>
-            <p className="mt-3 text-[#718096]">
-              Цю дію не можна буде відмінити з кабінету гостя. Бронювання отримає статус Cancelled.
+      <section className={`rounded-3xl bg-[#edf1f7] p-6 ${panelShadow}`}>
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Фільтр історії</h2>
+            <p className="mt-1 text-sm text-[#718096]">
+              {canManageBookings
+                ? 'Перемикайте всі бронювання, актуальні записи або минулу історію гостей.'
+                : 'Перемикайте свої актуальні бронювання або історію попередніх проживань.'}
             </p>
-            <div className="mt-7 flex gap-3">
-              <button
-                type="button"
-                onClick={handleCancelBooking}
-                disabled={busyAction === 'cancel'}
-                className="rounded-2xl bg-[#e45858] px-5 py-3 font-bold text-white transition hover:bg-[#d64d4d] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyAction === 'cancel' ? 'Скасування...' : 'Так, скасувати'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingToCancel(null)}
-                disabled={busyAction === 'cancel'}
-                className={`rounded-2xl bg-[#edf1f7] px-5 py-3 font-bold text-[#718096] transition hover:text-[#2d3748] ${floatingShadow}`}
-              >
-                Назад
-              </button>
-            </div>
           </div>
+          {hasActiveFilters && (
+            <button type="button" onClick={clearFilters} className={softButtonClass}>
+              Очистити
+            </button>
+          )}
         </div>
+
+        <div className="flex flex-wrap gap-3">
+          {bookingViewFilters.map((filter) => {
+            const isSelected = viewFilter === filter.value;
+
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => setViewFilter(filter.value)}
+                className={`rounded-2xl px-5 py-3 text-sm font-semibold transition-all duration-200 ${
+                  isSelected
+                    ? `bg-[#edf1f7] text-[#4f7cff] ${insetShadow}`
+                    : `bg-[#edf1f7] text-[#718096] hover:scale-[1.02] ${cardShadow} ${activeInsetShadow}`
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {canManageBookings && (
+        <section className={`rounded-3xl bg-[#edf1f7] p-6 ${panelShadow}`}>
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Пошук і фільтри</h2>
+              <p className="mt-1 text-sm text-[#718096]">
+                Шукайте за номером, типом кімнати або іменем гостя. Період показує бронювання, які перетинаються з вибраними датами.
+              </p>
+            </div>
+            {(searchQuery.trim() !== '' || dateFrom !== '' || dateTo !== '') && (
+              <button type="button" onClick={clearFilters} className={softButtonClass}>
+                Очистити
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr_1fr]">
+            <label className="space-y-2">
+              <span className="block text-sm font-semibold text-[#718096]">Номер, тип кімнати або гість</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Наприклад: 204, Deluxe, Іван"
+                className={inputClass}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="block text-sm font-semibold text-[#718096]">Дата з</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="block text-sm font-semibold text-[#718096]">Дата по</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+          </div>
+        </section>
       )}
+
+      <section className={`rounded-3xl bg-[#edf1f7] p-6 ${panelShadow}`}>
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Бронювання</h2>
+          <span className={`rounded-full bg-[#e8ecf2] px-4 py-2 text-sm font-semibold text-[#4f7cff] ${insetShadow}`}>
+            {hasActiveFilters ? `${filteredBookings.length} / ${bookings.length}` : bookings.length}
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {filteredBookings.length === 0 ? (
+            <div className={`rounded-3xl bg-[#edf1f7] p-8 text-center text-[#718096] ${insetShadow}`}>
+              {canManageBookings && hasActiveFilters
+                ? 'За вибраними фільтрами бронювань не знайдено.'
+                : hasActiveFilters
+                  ? 'За вибраним фільтром бронювань не знайдено.'
+                  : 'У вас немає бронювань.'}
+            </div>
+          ) : (
+            filteredBookings.map((booking) => (
+              <button
+                key={booking.id}
+                type="button"
+                onClick={() => navigate(`/bookings/${booking.id}`)}
+                className={`block w-full rounded-3xl bg-[#edf1f7] p-4 text-left transition-all duration-200 hover:scale-[1.01] ${activeInsetShadow} ${cardShadow}`}
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-lg font-bold text-[#2d3748]">
+                        {getRoomDisplayName(booking, canManageBookings)}
+                      </h3>
+                      <BookingStatusBadge status={booking.status} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-[#718096] sm:grid-cols-4">
+                      <span>Тип: <strong className="text-[#2d3748]">{booking.roomTypeName}</strong></span>
+                      <span>Гість: <strong className="text-[#2d3748]">{getGuestDisplayName(booking)}</strong></span>
+                      <span>Заїзд: <strong className="text-[#2d3748]">{formatDate(booking.checkInDate)}</strong></span>
+                      <span>Виїзд: <strong className="text-[#2d3748]">{formatDate(booking.checkOutDate)}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#edf1f7] px-4 py-3 text-right font-bold text-[#2d3748] shadow-[inset_4px_4px_8px_rgba(163,177,198,0.35),inset_-4px_-4px_8px_rgba(255,255,255,0.85)]">
+                    {formatMoney(booking.totalPrice)}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 };
-
-interface InfoBlockProps {
-  label: string;
-  value: string;
-}
-
-const InfoBlock = ({ label, value }: InfoBlockProps) => (
-  <div className={`rounded-2xl bg-[#edf1f7] p-4 ${insetShadow}`}>
-    <p className="text-sm text-[#718096]">{label}</p>
-    <p className="mt-1 font-bold text-[#2d3748]">{value}</p>
-  </div>
-);
-
-interface DateFieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  error?: string;
-}
-
-const DateField = ({ label, error, ...props }: DateFieldProps) => (
-  <label className="block">
-    <span className="mb-2 block font-semibold text-[#2d3748]">{label}</span>
-    <input
-      type="date"
-      className={`w-full rounded-2xl bg-[#edf1f7] px-4 py-3 text-[#2d3748] outline-none transition focus:shadow-[0_0_0_3px_rgba(79,124,255,0.22),inset_5px_5px_10px_rgba(163,177,198,0.35),inset_-5px_-5px_10px_rgba(255,255,255,0.85)] ${insetShadow}`}
-      {...props}
-    />
-    {error && <span className="mt-2 block text-sm font-medium text-[#e45858]">{error}</span>}
-  </label>
-);

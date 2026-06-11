@@ -25,10 +25,29 @@ namespace Application.Bookings.CommandHandlers
             if (booking == null)
                 return Result<bool>.Failure(Errors.BookingNotFound);
 
-            if (booking.GuestId != request.GuestId)
+            if (!request.CanOverrideBookingAccess && booking.GuestId != request.GuestId)
                 return Result<bool>.Failure(Errors.UnauthorizedBookingAccess);
 
-            if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+            if (request.CanCancelCheckedInBooking)
+            {
+                if (booking.Status is BookingStatus.Cancelled or BookingStatus.CheckedOut)
+                    return Result<bool>.Failure(Errors.InvalidBookingStatus);
+            }
+            else if (request.CanOverrideBookingAccess)
+            {
+                if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+                    return Result<bool>.Failure(Errors.InvalidBookingStatus);
+            }
+            else
+            {
+                if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+                    return Result<bool>.Failure(Errors.InvalidBookingStatus);
+
+                if (DateTime.UtcNow > booking.CheckInDate.AddHours(-24))
+                    return Result<bool>.Failure(Errors.InvalidBookingStatus);
+            }
+
+            if (booking.Status == BookingStatus.Cancelled)
                 return Result<bool>.Failure(Errors.InvalidBookingStatus);
 
             booking.Cancel(request.CancellationReason);

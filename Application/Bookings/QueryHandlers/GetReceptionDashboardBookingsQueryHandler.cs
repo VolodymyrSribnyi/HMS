@@ -1,33 +1,39 @@
-﻿using Application.Bookings.Queries;
+using Application.Bookings.Queries;
 using Application.Common.Interfaces;
 using Application.DTOs.Booking;
-using Application.DTOs.RoomType;
 using Application.ErrorHandling;
-using AutoMapper;
-using Domain.Entities;
+using Domain.Entities.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Application.Bookings.QueryHandlers
 {
-    public class GetAllBookingsQueryHandler : IRequestHandler<GetAllBookingsQuery, Result<IEnumerable<GetBookingDTO>>>
+    public class GetReceptionDashboardBookingsQueryHandler
+        : IRequestHandler<GetReceptionDashboardBookingsQuery, Result<IEnumerable<GetBookingDTO>>>
     {
         private readonly IHmsDbContext _context;
-        private readonly IMapper _mapper;
-        public GetAllBookingsQueryHandler(IHmsDbContext context,IMapper mapper)
+
+        public GetReceptionDashboardBookingsQueryHandler(IHmsDbContext context)
         {
             _context = context;
-            _mapper = mapper;
         }
 
-        public async Task<Result<IEnumerable<GetBookingDTO>>> Handle(GetAllBookingsQuery request, CancellationToken cancellationToken)
+        public async Task<Result<IEnumerable<GetBookingDTO>>> Handle(
+            GetReceptionDashboardBookingsQuery request,
+            CancellationToken cancellationToken)
         {
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
             var bookings = await _context.Bookings
                 .AsNoTracking()
-                .OrderByDescending(b => b.CheckInDate)
+                .Where(b =>
+                    ((b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed) &&
+                        (b.CheckInDate.Date == today || b.CheckInDate.Date == tomorrow)) ||
+                    (b.Status == BookingStatus.CheckedIn &&
+                        (b.CheckOutDate.Date == today || b.CheckOutDate.Date == tomorrow)))
+                .OrderBy(b => b.CheckInDate)
+                .ThenBy(b => b.CheckOutDate)
                 .Select(b => new GetBookingDTO
                 {
                     Id = b.Id,
@@ -42,11 +48,6 @@ namespace Application.Bookings.QueryHandlers
                     GuestFullName = b.Guest != null ? (b.Guest.FirstName + " " + b.Guest.LastName).Trim() : null
                 })
                 .ToListAsync(cancellationToken);
-
-            if (bookings == null)
-            {
-                return Result<IEnumerable<GetBookingDTO>>.Failure(Errors.NullData);
-            }
 
             return Result<IEnumerable<GetBookingDTO>>.Success(bookings);
         }

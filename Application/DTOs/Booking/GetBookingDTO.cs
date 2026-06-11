@@ -16,5 +16,12 @@ namespace Application.DTOs.Booking
         public string RoomTypeName { get; set; }
         public Guid? AssignedRoomId { get; set; }
         public string? AssignedRoomNumber { get; set; }
+        public Guid GuestId { get; set; }
+        public string? GuestFullName { get; set; }
+        public Guid? InvoiceId { get; set; }
+        public decimal? InvoiceTotalAmount { get; set; }
+        public decimal? InvoicePaidAmount { get; set; }
+        public decimal? InvoiceRemainingAmount { get; set; }
+        public bool? InvoiceIsClosed { get; set; }
     }
 }

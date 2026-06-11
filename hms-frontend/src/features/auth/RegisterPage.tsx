@@ -24,10 +24,8 @@ export const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      // Зміни URL на той, де лежить твій ендпоінт реєстрації (наприклад /api/auth/register)
       await axios.post('https://localhost:7063/api/auth/register', formData);
       
-      // Якщо реєстрація успішна, перекидаємо на сторінку логіну
       navigate('/login');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration error. Please try again.');

@@ -13,7 +13,14 @@ export const normalizeBookingStatus = (status: string | number): BookingStatusNa
     return statusByNumber[status] ?? 'Pending';
   }
 
-  return status as BookingStatusName;
+  const normalizedStatus = status.trim().toLowerCase();
+
+  if (normalizedStatus === 'confirmed') return 'Confirmed';
+  if (normalizedStatus === 'checkedin' || normalizedStatus === 'checked-in') return 'CheckedIn';
+  if (normalizedStatus === 'checkedout' || normalizedStatus === 'checked-out') return 'CheckedOut';
+  if (normalizedStatus === 'cancelled' || normalizedStatus === 'canceled') return 'Cancelled';
+
+  return 'Pending';
 };
 
 export const isExpectedArrivalStatus = (status: string | number) => {

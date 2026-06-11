@@ -2,6 +2,7 @@
 using Domain.Entities;
 using Domain.Interfaces;
 using Infrastructure.Data;
+using Infrastructure.Data.Interceptors;
 using Infrastructure.Identity;
 using Infrastructure.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -17,7 +18,12 @@ namespace Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<HmsDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+            services.AddScoped<BookingHistoryInterceptor>();
+
+            services.AddDbContext<HmsDbContext>((sp, options) =>
+                options
+                    .UseSqlServer(configuration.GetConnectionString("DefaultConnection"))
+                    .AddInterceptors(sp.GetRequiredService<BookingHistoryInterceptor>()));
 
             services.AddScoped<IHmsDbContext>(provider => provider.GetRequiredService<HmsDbContext>());
 

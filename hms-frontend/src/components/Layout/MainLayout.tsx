@@ -15,9 +15,11 @@ export const MainLayout = () => {
   const hasRole = (role: string) => roles.some((userRole) => userRole.toLowerCase() === role.toLowerCase());
 
   const isAdmin = hasRole('Admin');
+  const showBookings = isAdmin || hasRole('Guest') || hasRole('Receptionist');
   const showGuestPages = isAdmin || hasRole('Guest');
   const showReception = isAdmin || hasRole('Receptionist');
   const showHousekeeping = isAdmin || hasRole('Maid');
+  const showReports = isAdmin || hasRole('Accountant');
 
   useEffect(() => {
     if (location.pathname.startsWith('/admin')) {
@@ -46,11 +48,14 @@ export const MainLayout = () => {
             </Link>
           )}
 
+          {showBookings && (
+            <Link to="/bookings" className={navClassName('/bookings')}>
+              {showReception && !hasRole('Guest') ? 'Бронювання' : 'Мої бронювання'}
+            </Link>
+          )}
+
           {showGuestPages && (
             <>
-              <Link to="/bookings" className={navClassName('/bookings')}>
-                Мої бронювання
-              </Link>
               <Link to="/guest/search" className={navClassName('/guest')}>
                 Знайти номер
               </Link>
@@ -66,6 +71,12 @@ export const MainLayout = () => {
           {showHousekeeping && (
             <Link to="/housekeeping/tasks" className={navClassName('/housekeeping')}>
               Прибирання
+            </Link>
+          )}
+
+          {showReports && (
+            <Link to="/reports" className={navClassName('/reports')}>
+              Звіти
             </Link>
           )}
 

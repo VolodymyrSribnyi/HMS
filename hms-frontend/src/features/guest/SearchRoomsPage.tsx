@@ -162,17 +162,11 @@ export const SearchRoomsPage = () => {
                     <h2 className="text-xl font-bold text-slate-900">{room.roomTypeName}</h2>
                     <p className="text-sm text-slate-500">Номер {room.roomNumber}, поверх {room.floor}</p>
                   </div>
-                  <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                    Доступний
-                  </span>
                 </div>
 
                 <div className="space-y-2 text-sm text-slate-600">
                   <p>
                     <span className="font-medium text-slate-400">Ціна за ніч:</span> {room.basePrice.toFixed(2)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-400">Статус:</span> {room.status}
                   </p>
                 </div>
               </div>

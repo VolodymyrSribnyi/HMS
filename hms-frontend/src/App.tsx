@@ -5,6 +5,7 @@ import { useAuthStore } from './features/auth/stores/authStore';
 import { useEffect, useState, type ReactNode } from 'react';
 import { MainLayout } from './components/Layout/MainLayout';
 import { BookingsPage } from './features/bookings/BookingsPage';
+import { BookingDetailsPage } from './features/bookings/BookingDetailsPage';
 import { apiClient } from './lib/axios';
 import { RoomsPage } from './features/rooms/RoomsPage';
 import { SearchRoomsPage } from './features/guest/SearchRoomsPage';
@@ -12,6 +13,7 @@ import { CreateBookingPage } from './features/guest/CreateBookingPage';
 import { ReceptionDashboardPage } from './features/reception/ReceptionDashboardPage';
 import { CleaningTasksPage } from './features/housekeeping/CleaningTasksPage';
 import { AdminRoomsPage } from './features/admin/AdminRoomsPage';
+import { ReportsDashboardPage } from './features/reports/ReportsDashboardPage';
 const DashboardPage = () => <div className="p-4"><h1>Панель управління готелем</h1></div>;
 
 interface RoleRouteProps {
@@ -66,7 +68,9 @@ function App() {
       ? '/reception'
       : hasRole('Maid')
         ? '/housekeeping/tasks'
-        : '/bookings';
+        : hasRole('Accountant')
+          ? '/reports'
+          : '/bookings';
 
   return (
     <BrowserRouter>
@@ -82,8 +86,13 @@ function App() {
               </RoleRoute>
             } />
             <Route path="/bookings" element={
-              <RoleRoute allowedRoles={['Guest']} fallbackPath={fallbackPath} roles={roles}>
+              <RoleRoute allowedRoles={['Guest', 'Receptionist', 'Admin']} fallbackPath={fallbackPath} roles={roles}>
                 <BookingsPage />
+              </RoleRoute>
+            } />
+            <Route path="/bookings/:id" element={
+              <RoleRoute allowedRoles={['Guest', 'Receptionist', 'Admin']} fallbackPath={fallbackPath} roles={roles}>
+                <BookingDetailsPage />
               </RoleRoute>
             } />
             <Route path="/guest/search" element={
@@ -114,6 +123,11 @@ function App() {
             <Route path="/admin/room-types" element={
               <RoleRoute allowedRoles={['Admin']} fallbackPath={fallbackPath} roles={roles}>
                 <RoomsPage />
+              </RoleRoute>
+            } />
+            <Route path="/reports" element={
+              <RoleRoute allowedRoles={['Admin', 'Accountant']} fallbackPath={fallbackPath} roles={roles}>
+                <ReportsDashboardPage />
               </RoleRoute>
             } />
             <Route path="/rooms" element={<Navigate to="/admin/room-types" />} />

@@ -13,5 +13,7 @@ namespace Application.Bookings.Commands
         public Guid RoomId { get; set; }
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
+        public bool CanOverrideBookingAccess { get; set; }
+        public bool CanUpdateCheckedInBooking { get; set; }
     }
 }
